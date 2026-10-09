@@ -11,15 +11,20 @@ This app is the runnable companion to **[FeedReadiness](https://github.com/rajat
 
 These come from CI, not from the author's Mac. The [Simulator run](https://github.com/rajatslakhina/video-feed-readiness-kit-demo-app/actions/workflows/simulator.yml) workflow builds the app on a GitHub-hosted `macos-15` runner (Xcode 16.4) and installs it on an iPhone 16 Pro Simulator (iOS 18.5). It launches the app once per `-scenario`, checks that the process is still running after the scenario has played, and commits what the Simulator shows. The numbers are what the engine reported on that run. A headless run of the same six scenarios on Linux shows the same windows, cache sizes and quality caps.
 
-| Launch: steady scroll on Wi-Fi | `-scenario fling` | `-scenario hot` |
-|:---:|:---:|:---:|
-| <img src="Demo/Screenshots/1-steady-wifi.png" width="260" alt="Steady scroll on Wi-Fi: one clip playing, three prepared, three prefetched"> | <img src="Demo/Screenshots/2-fling.png" width="260" alt="After a ten-swipe fling: every contract check at zero, four deferred releases"> | <img src="Demo/Screenshots/3-thermal-critical.png" width="260" alt="Thermal state critical: one decoder, 0.6 Mbps cap, playing at 360p"> |
-| Two swipes in: 1 clip playing, 3 prepared (one behind, two ahead), 3 prefetched. All 4 decoders in use, 5.0 Mbps cap | Ten swipes with no pause, so the user leaves clips whose decoders are still preparing. Every contract check stays at 0, and 4 releases waited for their prepares to finish. P(skip next) is now 0.89, so prefetches are 1.5 s | One swipe, then thermal state critical. One decoder is left, the cap is 0.6 Mbps and the playing clip has switched to 360p. Its cached bytes are 1080p, so its row shows **–** |
+| Launch state (`-scenario steady`, the default) | `-scenario fling` |
+|:---:|:---:|
+| <img src="Demo/Screenshots/1-steady-wifi.png" width="300" alt="Steady scroll on Wi-Fi: one clip playing, three prepared, three prefetched"> | <img src="Demo/Screenshots/2-fling.png" width="300" alt="After a ten-swipe fling: every contract check at zero, four deferred releases"> |
+| Two swipes in on Wi-Fi: 1 clip playing, 3 prepared (one behind, two ahead), 3 prefetched. All 4 decoders in use, 5.0 Mbps cap | Ten swipes with no pause, so the user leaves clips whose decoders are still preparing. Every contract check stays at 0, and 4 releases waited for their prepares to finish. P(skip next) is now 0.89, so prefetches are 1.5 s |
 
-| `-scenario offline` | `-scenario skipper` | `-scenario cellular-low-power` |
-|:---:|:---:|:---:|
-| <img src="Demo/Screenshots/4-offline-from-cache.png" width="260" alt="Offline: the clip plays from cache and the next one is prepared from its cached first segment"> | <img src="Demo/Screenshots/5-learned-skipper.png" width="260" alt="Learned skipper: P(skip next) 0.89 and prefetch depth 1.5 seconds"> | <img src="Demo/Screenshots/6-cellular-low-power.png" width="260" alt="Cellular with Low Power Mode: 1.2 Mbps cap, one clip prepared ahead"> |
-| One swipe on Wi-Fi, the network drops, then another swipe. The new clip plays, the next one is prepared because its first segment is on disk, and nothing is fetched | Ten unhurried swipes as a skipper. P(skip next) is 0.89, so every prefetch is 1.5 s, and all 4 decoders are still in use | 3 Mbps cellular with Low Power Mode, then one swipe. The cap is 1.2 Mbps (540p), one clip is prepared ahead and nothing behind, and prefetch depth is 3 s |
+| `-scenario hot` | `-scenario offline` |
+|:---:|:---:|
+| <img src="Demo/Screenshots/3-thermal-critical.png" width="300" alt="Thermal state critical: one decoder, 0.6 Mbps cap, playing at 360p"> | <img src="Demo/Screenshots/4-offline-from-cache.png" width="300" alt="Offline: the clip plays from cache and the next one is prepared from its cached first segment"> |
+| One swipe, then thermal state critical. One decoder is left, the cap is 0.6 Mbps and the playing clip has switched to 360p. Its cached bytes are 1080p, so its row shows **–** | One swipe on Wi-Fi, the network drops, then another swipe. The new clip plays, the next one is prepared because its first segment is on disk, and nothing is fetched |
+
+| `-scenario skipper` | `-scenario cellular-low-power` |
+|:---:|:---:|
+| <img src="Demo/Screenshots/5-learned-skipper.png" width="300" alt="Learned skipper: P(skip next) 0.89 and prefetch depth 1.5 seconds"> | <img src="Demo/Screenshots/6-cellular-low-power.png" width="300" alt="Cellular with Low Power Mode: 1.2 Mbps cap, one clip prepared ahead"> |
+| Ten unhurried swipes as a skipper. P(skip next) is 0.89, so every prefetch is 1.5 s, and all 4 decoders are still in use | 3 Mbps cellular with Low Power Mode, then one swipe. The cap is 1.2 Mbps (540p), one clip is prepared ahead and nothing behind, and prefetch depth is 3 s |
 
 ## Why this matters
 
