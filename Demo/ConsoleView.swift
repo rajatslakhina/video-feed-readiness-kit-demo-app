@@ -117,18 +117,23 @@ private struct WindowCard: View {
 
     var body: some View {
         Card(title: title) {
-            VStack(spacing: 4) {
+            VStack(spacing: 2) {
                 ForEach(snapshot.rows) { row in
-                    HStack(spacing: 8) {
+                    HStack(spacing: 6) {
                         Text("\(row.index)")
                             .font(.caption.monospacedDigit())
                             .frame(width: 24, alignment: .trailing)
                             .foregroundStyle(.secondary)
                         TierBadge(tier: row.tier)
+                        // The clip name keeps its width; the decoder state
+                        // shrinks first on a narrow screen.
                         Text(row.item.raw).font(.caption.monospaced()).lineLimit(1)
-                        Spacer(minLength: 4)
+                            .layoutPriority(1)
+                        Spacer(minLength: 2)
                         Text(row.decoder == .idle ? "" : row.decoder.rawValue)
                             .font(.caption2.weight(.medium))
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.7)
                             .foregroundStyle(row.decoder == .playing ? .green : .secondary)
                         // During a quality switch the decoder still holds the old
                         // rendition: show both ("1080p→540p").
@@ -142,7 +147,7 @@ private struct WindowCard: View {
                             .font(.caption2.monospacedDigit())
                             .frame(width: 40, alignment: .trailing)
                     }
-                    .padding(.vertical, 3)
+                    .padding(.vertical, 2)
                     .padding(.horizontal, 6)
                     .background(row.index == snapshot.cursor ? Color.accentColor.opacity(0.12) : .clear,
                                 in: RoundedRectangle(cornerRadius: 6))
