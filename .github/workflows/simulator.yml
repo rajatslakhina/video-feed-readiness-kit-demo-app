@@ -1,0 +1,49 @@
+name: Simulator run
+
+# Installs and launches the app on an iOS Simulator, checks it is still
+# alive after each scenario, and commits the screenshots back to main.
+# Runs only when the app itself changes (not on README-only commits), and
+# never on its own screenshot commit.
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'Demo/**'
+      - '!Demo/Screenshots/**'
+      - 'Demo.xcodeproj/**'
+      - 'Scripts/**'
+      - '.github/workflows/simulator.yml'
+  workflow_dispatch:
+
+concurrency:
+  group: simulator-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  run-on-simulator:
+    name: Install, launch 6 scenarios, screenshot
+    runs-on: macos-15
+    # Screenshots are committed to main, so only main ever runs this job
+    # (a manual run from another branch would otherwise push that branch).
+    if: github.ref == 'refs/heads/main'
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v6
+      - name: Build, install, launch and screenshot
+        run: bash Scripts/simulator-screenshots.sh
+      - name: Upload screenshots
+        uses: actions/upload-artifact@v6
+        with:
+          name: simulator-screenshots
+          path: Demo/Screenshots/*.png
+      - name: Commit screenshots if they changed
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add Demo/Screenshots/*.png
+          if ! git diff --cached --quiet; then
+            git commit -m "Simulator screenshots from CI [skip ci]"
+            git pull --rebase origin main
+            git push origin HEAD:main
+          fi

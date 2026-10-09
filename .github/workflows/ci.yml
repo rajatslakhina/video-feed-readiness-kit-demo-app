@@ -1,0 +1,31 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  resolve-and-build:
+    name: Resolve remote package + build for iOS Simulator
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v6
+      - name: Toolchain
+        run: xcodebuild -version
+      - name: Resolve the remote package from GitHub (pinned release)
+        run: xcodebuild -resolvePackageDependencies -project Demo.xcodeproj -scheme Demo
+      - name: Show the resolved version
+        run: find . -name Package.resolved -not -path "./build/*" -print -exec cat {} \;
+      - name: Build for any iOS Simulator
+        run: |
+          xcodebuild build -project Demo.xcodeproj -scheme Demo \
+            -destination 'generic/platform=iOS Simulator' CODE_SIGNING_ALLOWED=NO
