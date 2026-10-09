@@ -77,12 +77,12 @@ Scripts/
   simulator-screenshots.sh  CI: build, install, launch each scenario, check it is alive, screenshot
 ```
 
-No real video is decoded. `SimulatedPlayer` stands in for `AVPlayer`, and it also *checks the port contract*:
+No real video is decoded. `SimulatedPlayer` stands in for `AVPlayer`, and it also *checks the main clauses of the port contract*. It counts:
 
 - how many decoders are live at once;
 - any release that arrives while that player is still being created;
 - how many clips are playing at once;
-- any command sent to a player that was already released, or whose prepare failed.
+- any `play` or `pause` sent to a player that was already released or never prepared, and any `play` for a player whose prepare failed.
 
 That is how the fling result above is measured rather than asserted. The library's tests also drive this simulated player with deliberate contract violations, to prove that each of its counters really counts.
 
