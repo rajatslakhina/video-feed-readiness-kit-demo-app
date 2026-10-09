@@ -142,7 +142,7 @@ private struct WindowCard: View {
                             .font(.caption2.monospaced())
                             .lineLimit(1)
                             .minimumScaleFactor(0.7)
-                            .frame(width: 64, alignment: .trailing)
+                            .frame(width: 58, alignment: .trailing)
                         Text(row.cachedSeconds > 0 ? seconds(row.cachedSeconds) : "–")
                             .font(.caption2.monospacedDigit())
                             .frame(width: 40, alignment: .trailing)
@@ -217,6 +217,23 @@ private struct ControlBar: View {
     let model: FeedConsoleModel
 
     var body: some View {
+        // Full-size buttons where they fit (393 pt and wider), smaller ones on
+        // a 375 pt iPhone, and a scrolling row as the last resort.
+        ViewThatFits(in: .horizontal) {
+            controls
+            controls.controlSize(.small)
+            ScrollView(.horizontal, showsIndicators: false) {
+                controls.controlSize(.small).padding(.horizontal, 8)
+            }
+        }
+        .buttonStyle(.bordered)
+        .disabled(model.busy)
+        .padding(.vertical, 8)
+        .frame(maxWidth: .infinity)
+        .background(.bar)
+    }
+
+    private var controls: some View {
         HStack(spacing: 10) {
             Button { Task { await model.swipe(by: -1) } } label: { Image(systemName: "chevron.up") }
                 .accessibilityLabel("Previous item")
@@ -241,11 +258,6 @@ private struct ControlBar: View {
                 Button("10 swipes as a watcher") { Task { await model.train(.watcher) } }
             }
         }
-        .buttonStyle(.bordered)
-        .disabled(model.busy)
-        .padding(.vertical, 8)
-        .frame(maxWidth: .infinity)
-        .background(.bar)
     }
 }
 
@@ -275,7 +287,7 @@ private struct Metric: View {
         VStack(alignment: .leading, spacing: 2) {
             Text(title).font(.caption).foregroundStyle(.secondary)
             Text(value).font(.title3.weight(.semibold).monospacedDigit()).lineLimit(1).minimumScaleFactor(0.6)
-            Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1)
+            Text(detail).font(.caption2).foregroundStyle(.secondary).lineLimit(1).minimumScaleFactor(0.8)
         }
         .padding(10)
         .frame(maxWidth: .infinity, alignment: .leading)
