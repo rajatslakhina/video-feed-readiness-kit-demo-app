@@ -7,7 +7,19 @@
 
 This app is the runnable companion to **[FeedReadiness](https://github.com/rajatslakhina/video-feed-readiness-kit)**, a resource-budgeted readiness engine for vertical video feeds. It is a separate Xcode project. It consumes the library as a **remote Swift package pinned to a release** (`upToNextMajorVersion` from `1.0.0`), never through a local path or a branch.
 
-<!-- SCREENSHOTS -->
+## Screenshots (iOS Simulator, in CI)
+
+These come from CI, not from the author's Mac. The [Simulator run](https://github.com/rajatslakhina/video-feed-readiness-kit-demo-app/actions/workflows/simulator.yml) workflow builds the app on a GitHub-hosted `macos-15` runner (Xcode 16.4) and installs it on an iPhone 16 Pro Simulator (iOS 18.5). It launches the app once per `-scenario`, checks that the process is still running after the scenario has played, and commits what the Simulator shows. The numbers are what the engine reported on that run. A headless run of the same six scenarios on Linux shows the same windows, cache sizes and quality caps.
+
+| Launch: steady scroll on Wi-Fi | `-scenario fling` | `-scenario hot` |
+|:---:|:---:|:---:|
+| <img src="Demo/Screenshots/1-steady-wifi.png" width="260" alt="Steady scroll on Wi-Fi: one clip playing, three prepared, three prefetched"> | <img src="Demo/Screenshots/2-fling.png" width="260" alt="After a ten-swipe fling: every contract check at zero, four deferred releases"> | <img src="Demo/Screenshots/3-thermal-critical.png" width="260" alt="Thermal state critical: one decoder, 0.6 Mbps cap, playing at 360p"> |
+| Two swipes in: 1 clip playing, 3 prepared (one behind, two ahead), 3 prefetched. All 4 decoders in use, 5.0 Mbps cap | Ten swipes with no pause, so the user leaves clips whose decoders are still preparing. Every contract check stays at 0, and 4 releases waited for their prepares to finish. P(skip next) is now 0.89, so prefetches are 1.5 s | One swipe, then thermal state critical. One decoder is left, the cap is 0.6 Mbps and the playing clip has switched to 360p. Its cached bytes are 1080p, so its row shows **–** |
+
+| `-scenario offline` | `-scenario skipper` | `-scenario cellular-low-power` |
+|:---:|:---:|:---:|
+| <img src="Demo/Screenshots/4-offline-from-cache.png" width="260" alt="Offline: the clip plays from cache and the next one is prepared from its cached first segment"> | <img src="Demo/Screenshots/5-learned-skipper.png" width="260" alt="Learned skipper: P(skip next) 0.89 and prefetch depth 1.5 seconds"> | <img src="Demo/Screenshots/6-cellular-low-power.png" width="260" alt="Cellular with Low Power Mode: 1.2 Mbps cap, one clip prepared ahead"> |
+| One swipe on Wi-Fi, the network drops, then another swipe. The new clip plays, the next one is prepared because its first segment is on disk, and nothing is fetched | Ten unhurried swipes as a skipper. P(skip next) is 0.89, so every prefetch is 1.5 s, and all 4 decoders are still in use | 3 Mbps cellular with Low Power Mode, then one swipe. The cap is 1.2 Mbps (540p), one clip is prepared ahead and nothing behind, and prefetch depth is 3 s |
 
 ## Why this matters
 
@@ -28,7 +40,7 @@ The app launches into the **steady** state: two swipes into the feed on Wi-Fi. E
 | Control | What happens | What to look at |
 |---|---|---|
 | **▼ / ▲** | Moves the cursor one clip | The window card re-plans around the new clip: 1 **PLAYING**, 3 **PREPARED** (holding a decoder: one behind, two ahead) and 3 **PREFETCH** (bytes on disk, no decoder). The next row is **cold** |
-| **Fling ×10** | Ten swipes with no pause, while every decoder takes 120 ms to prepare | *Deferred releases* rises (4 when this exact sequence was run headless), and downloads for clips that left the window are cancelled. *Releases while still preparing*, *Leaked decoders*, *Hardware peak above budget*, *Two clips playing at once* and *Commands to released players* all stay at **0**. The fling also teaches the skip model a skipper, so new prefetches shrink to 1.5 s |
+| **Fling ×10** | Ten swipes with no pause, while every decoder takes 120 ms to prepare | *Deferred releases* rises (4 in the fling screenshot above, and 4 when this exact sequence is run headless), and downloads for clips that left the window are cancelled. *Releases while still preparing*, *Leaked decoders*, *Hardware peak above budget*, *Two clips playing at once* and *Commands to released players* all stay at **0**. The fling also teaches the skip model a skipper, so new prefetches shrink to 1.5 s |
 | **Conditions → Offline** | The network drops | The PREFETCH rows disappear: nothing new is fetched, and downloads still in flight would be cancelled. The playing clip keeps playing and the next clip stays prepared, because their players already buffered. Nothing else gets a decoder unless its first segment is on disk. Add Low Power Mode or heat on top and the clip still plays at its prepared 1080p: offline, the quality cap is a preference, not a reason to stop |
 | **Conditions → Thermal: critical** | The phone overheats | Decoders drop to 1, the quality cap falls to 0.6 Mbps, and the playing clip switches to 360p *make-before-break* (*Make-before-break hand-offs* = 1). While the switch is in progress, its row reads 1080p→360p. Clips whose cached bytes are 1080p show **–** at 360p, because 1080p bytes cannot feed a 360p decoder |
 | **Conditions → Thermal: nominal** (after critical) | The phone cools | Quality does not jump straight back. It climbs one level per 4 s of sustained headroom, and each swipe, condition change or completed download checks the timer. Swipe every few seconds and the cap goes 0.6 → 1.2 → 2.5 → 5.0 Mbps (*Quality up* = 3) |
@@ -69,6 +81,19 @@ No real video is decoded. `SimulatedPlayer` stands in for `AVPlayer`, and it als
 
 That is how the fling result above is measured rather than asserted. The library's tests also drive this simulated player with deliberate contract violations, to prove that each of its counters really counts.
 
-<!-- VERIFICATION -->
+## Verification
+
+| What | Where | Result |
+|---|---|---|
+| Resolve `video-feed-readiness-kit` from GitHub at the pinned release | [CI](https://github.com/rajatslakhina/video-feed-readiness-kit-demo-app/actions/workflows/ci.yml), `macos-15`, Xcode 16.4 | Resolves `1.0.0` (the log prints `Package.resolved`) |
+| Build the app for `generic/platform=iOS Simulator` | CI | Passing, with no Swift compiler warnings in the build log |
+| Build, install and launch on an iPhone 16 Pro Simulator (iOS 18.5) in six scenarios, and check that the process is alive after each | [Simulator run](https://github.com/rajatslakhina/video-feed-readiness-kit-demo-app/actions/workflows/simulator.yml), `macos-15` | Passing; the screenshots above |
+| `FeedConsoleModel` against the library: every launch scenario, and every control in the table above starting from the launch state | Linux, headless, Swift 6.1.2 | Every contract counter at 0 and no invariant violations, in every case. The numbers in the table come from this run |
+
+**Not verified:**
+
+- **The app has not been run on the author's Mac or on a device.** A local Simulator run was planned and skipped: Xcode and the Simulator on that Mac already had unrelated work open, and running the demo there would have meant clicking through it. The CI Simulator run above replaces it.
+- **Nobody tapped the controls in a Simulator.** The screenshots come from launch scenarios, which call the same model actions as the buttons. The control-by-control effects in the table were checked headless on Linux.
+- **No real video is decoded.** `SimulatedPlayer` stands in for `AVPlayer`, so real decoder limits, frame drops and AVFoundation timing are out of scope. The 120 ms prepare latency and the 6 MB/s transport are illustrative values.
 
 MIT licensed.
